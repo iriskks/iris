@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'details_screen.dart'; // импорт второго экрана
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -31,6 +32,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         centerTitle: true,
       ),
+
       body: ListView.builder(
         itemCount: categories.length,
         itemBuilder: (context, index) {
@@ -51,23 +53,29 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               trailing: const Icon(Icons.arrow_forward_ios, color: Colors.grey),
               onTap: () {
-                // Здесь можно добавить переход на экран категории
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      'Открыта категория: ${categories[index]['title']}',
+                final title = categories[index]['title'];
+                if (title == 'Предметы') {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) =>
+                          const DetailsScreen(title: 'Предметы'),
                     ),
-                  ),
-                );
+                  );
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Открыта категория: $title')),
+                  );
+                }
               },
             ),
           );
         },
       ),
+
       floatingActionButton: FloatingActionButton(
         backgroundColor: Colors.orangeAccent,
         onPressed: () {
-          // Например, поиск или добавление статьи
           ScaffoldMessenger.of(
             context,
           ).showSnackBar(const SnackBar(content: Text('Функция в разработке')));
