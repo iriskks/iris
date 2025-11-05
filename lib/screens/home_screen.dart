@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'details_screen.dart'; // импорт второго экрана
+import 'package:shared_preferences/shared_preferences.dart';
+import 'details_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -17,6 +18,26 @@ class _HomeScreenState extends State<HomeScreen> {
     {'title': 'Комнаты', 'icon': Icons.door_front_door},
   ];
 
+  String? lastOpened;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLastOpened();
+  }
+
+  Future<void> _loadLastOpened() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      lastOpened = prefs.getString('lastOpened');
+    });
+  }
+
+  Future<void> _saveLastOpened(String title) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('lastOpened', title);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -33,44 +54,61 @@ class _HomeScreenState extends State<HomeScreen> {
         centerTitle: true,
       ),
 
-      body: ListView.builder(
-        itemCount: categories.length,
-        itemBuilder: (context, index) {
-          return Card(
-            color: const Color(0xFF2C2C2C),
-            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(15),
+      body: Column(
+        children: [
+          if (lastOpened != null)
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Text(
+                'Последняя открытая категория: $lastOpened',
+                style: const TextStyle(
+                  color: Colors.orangeAccent,
+                  fontSize: 16,
+                ),
+              ),
             ),
-            child: ListTile(
-              leading: Icon(
-                categories[index]['icon'],
-                color: Colors.orangeAccent,
-              ),
-              title: Text(
-                categories[index]['title'],
-                style: const TextStyle(color: Colors.white, fontSize: 18),
-              ),
-              trailing: const Icon(Icons.arrow_forward_ios, color: Colors.grey),
-              onTap: () {
-                final title = categories[index]['title'];
-                if (title == 'Предметы') {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) =>
-                          const DetailsScreen(title: 'Предметы'),
+          Expanded(
+            child: ListView.builder(
+              itemCount: categories.length,
+              itemBuilder: (context, index) {
+                return Card(
+                  color: const Color(0xFF2C2C2C),
+                  margin: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                  child: ListTile(
+                    leading: Icon(
+                      categories[index]['icon'],
+                      color: Colors.orangeAccent,
                     ),
-                  );
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Открыта категория: $title')),
-                  );
-                }
+                    title: Text(
+                      categories[index]['title'],
+                      style: const TextStyle(color: Colors.white, fontSize: 18),
+                    ),
+                    trailing: const Icon(
+                      Icons.arrow_forward_ios,
+                      color: Colors.grey,
+                    ),
+                    onTap: () async {
+                      final title = categories[index]['title'];
+                      await _saveLastOpened(title); // 💾 Сохраняем
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => DetailsScreen(title: title),
+                        ),
+                      );
+                    },
+                  ),
+                );
               },
             ),
-          );
-        },
+          ),
+        ],
       ),
 
       floatingActionButton: FloatingActionButton(
