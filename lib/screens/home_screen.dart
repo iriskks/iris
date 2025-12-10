@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'login_screen.dart';
 import 'details_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -19,11 +20,14 @@ class _HomeScreenState extends State<HomeScreen> {
   ];
 
   String? lastOpened;
+  String? userName;
+  String? userEmail;
 
   @override
   void initState() {
     super.initState();
     _loadLastOpened();
+    _loadUser();
   }
 
   Future<void> _loadLastOpened() async {
@@ -36,6 +40,26 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _saveLastOpened(String title) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('lastOpened', title);
+  }
+
+  Future<void> _loadUser() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      userName = prefs.getString('userName');
+      userEmail = prefs.getString('userEmail');
+    });
+  }
+
+  Future<void> _logout() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('userName');
+    await prefs.remove('userEmail');
+    if (mounted) {
+      setState(() {
+        userName = null;
+        userEmail = null;
+      });
+    }
   }
 
   @override
@@ -52,10 +76,68 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
         centerTitle: true,
+        actions: [
+          if (userName == null)
+            IconButton(
+              icon: const Icon(Icons.login, color: Colors.orangeAccent),
+              onPressed: () async {
+                // Переходим на LoginScreen и ждём результат
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const LoginScreen()),
+                );
+                await _loadUser(); // обновляем данные пользователя
+              },
+            )
+          else
+            PopupMenuButton<int>(
+              icon: const Icon(Icons.person, color: Colors.orangeAccent),
+              color: const Color(0xFF2E2E2E),
+              itemBuilder: (context) => [
+                PopupMenuItem<int>(
+                  value: 0,
+                  child: Text(
+                    "Вы: $userName",
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                ),
+                PopupMenuItem<int>(
+                  value: 1,
+                  child: Text(
+                    userEmail ?? "",
+                    style: const TextStyle(color: Colors.white70),
+                  ),
+                ),
+                const PopupMenuDivider(),
+                PopupMenuItem<int>(
+                  value: 2,
+                  child: const Text(
+                    "Выйти",
+                    style: TextStyle(color: Colors.redAccent),
+                  ),
+                ),
+              ],
+              onSelected: (value) {
+                if (value == 2) {
+                  Future.delayed(Duration.zero, () => _logout());
+                }
+              },
+            ),
+        ],
       ),
-
       body: Column(
         children: [
+          if (userName != null)
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Text(
+                'Здравствуйте, $userName 👋',
+                style: const TextStyle(
+                  color: Colors.orangeAccent,
+                  fontSize: 18,
+                ),
+              ),
+            ),
           if (lastOpened != null)
             Padding(
               padding: const EdgeInsets.all(8.0),
@@ -71,6 +153,7 @@ class _HomeScreenState extends State<HomeScreen> {
             child: ListView.builder(
               itemCount: categories.length,
               itemBuilder: (context, index) {
+                final title = categories[index]['title'] as String;
                 return Card(
                   color: const Color(0xFF2C2C2C),
                   margin: const EdgeInsets.symmetric(
@@ -82,11 +165,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   child: ListTile(
                     leading: Icon(
-                      categories[index]['icon'],
+                      categories[index]['icon'] as IconData,
                       color: Colors.orangeAccent,
                     ),
                     title: Text(
-                      categories[index]['title'],
+                      title,
                       style: const TextStyle(color: Colors.white, fontSize: 18),
                     ),
                     trailing: const Icon(
@@ -94,14 +177,15 @@ class _HomeScreenState extends State<HomeScreen> {
                       color: Colors.grey,
                     ),
                     onTap: () async {
-                      final title = categories[index]['title'];
-                      await _saveLastOpened(title); // 💾 Сохраняем
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => DetailsScreen(title: title),
-                        ),
-                      );
+                      await _saveLastOpened(title);
+                      if (mounted) {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => DetailsScreen(title: title),
+                          ),
+                        );
+                      }
                     },
                   ),
                 );
@@ -110,13 +194,15 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-
       floatingActionButton: FloatingActionButton(
         backgroundColor: Colors.orangeAccent,
         onPressed: () {
-          ScaffoldMessenger.of(
+          Navigator.push(
             context,
-          ).showSnackBar(const SnackBar(content: Text('Функция в разработке')));
+            MaterialPageRoute(
+              builder: (context) => const DetailsScreen(title: 'Предметы'),
+            ),
+          );
         },
         child: const Icon(Icons.search),
       ),
